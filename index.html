@@ -886,8 +886,19 @@ function openExisting(){return window.showOpenFilePicker({types:TYPES,multiple:f
 function reconnect(){if(!handle)return;return handle.requestPermission({mode:'readwrite'}).then(function(p){if(p==='granted')return loadFrom(handle);toast('Sin permiso no se puede guardar en el archivo')}).catch(function(){toast('No se pudo reconectar el archivo')})}
 function unlink(){handle=null;synced=false;state='none';return idb.del().catch(function(){}).then(draw)}
 
-function download(){var js=JSON.stringify(data(),null,1),b=new Blob([js],{type:'application/json'}),a=document.createElement('a'),d=new Date();
-a.href=URL.createObjectURL(b);a.download='catalogo-cds-'+d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href)},2000)}
+function isIOS(){return /iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1)}
+function fname(){var d=new Date();return 'catalogo-cds-'+d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)+'.json'}
+function classicDownload(js,name){var b=new Blob([js],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href)},2000)}
+function download(){var js=JSON.stringify(data(),null,1),name=fname();
+/* iOS/iPadOS: abre directamente la hoja de compartir (Guardar en Archivos → elegir ubicación) */
+if(isIOS()&&navigator.share&&typeof File==='function'){
+ try{var f=new File([js],name,{type:'application/json'});
+  if(!navigator.canShare||navigator.canShare({files:[f]})){
+   navigator.share({files:[f],title:name}).catch(function(e){if(e&&e.name==='AbortError')return;classicDownload(js,name)});
+   return}
+ }catch(e){}
+}
+classicDownload(js,name)}
 function importFile(f){if(!f)return;var fr=new FileReader();fr.onload=function(){try{var a=JSON.parse(fr.result);if(!Array.isArray(a))throw 0;waitReplace().then(function(){window.__cdReplace(a);toast('Copia cargada ('+a.length+' CDs)')})}catch(e){toast('Ese archivo no es una copia válida de esta app')}};fr.readAsText(f)}
 
 function dialog(){
